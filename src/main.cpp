@@ -169,23 +169,61 @@ void md_initView(int w, int h) {
   resetCharacterSprite();
 }
 
+
+uint8_t getPhBtnInput(){
+  // uint8_t buttons = 0;
+ pressedBtnID = -1;
+
+if(ui.getPhVolVec(0, 1)==7){pressedBtnID = 0;}
+if(ui.getPhVolVec(0, 1)==3){pressedBtnID = 1;}
+if(ui.getPhVolVec(0, 1)==5){pressedBtnID = 2;}
+if(ui.getPhVolVec(0, 1)==1){pressedBtnID = 3;}
+
+if(ui.getPhVolDir(2)==0){pressedBtnID = 4;}
+if(ui.getPhVolDir(2)==3){pressedBtnID = 5;}
+if(ui.getPhVolDir(2)==5){pressedBtnID = 6;}
+if(ui.getPhVolDir(2)==1){pressedBtnID = 7;}
+
+
+ui.updatePhBtns();//物理ボタン3つ
+
+if(ui.getHitValue() == 101||ui.getHitValue() == 111){pressedBtnID = 8;}
+if(ui.getHitValue() == 102||ui.getHitValue() == 112){pressedBtnID = 9;}
+if(ui.getHitValue() == 103||ui.getHitValue() == 113){pressedBtnID = 10;}
+
+  return pressedBtnID;
+}
+
+
 static TaskHandle_t frameTaskHandle;
+
+uint32_t preTime = 0;
+
+uint64_t frame = 0;
+//2倍拡大表示用のパラメータ
+float matrix_game[6] = {2.0,   // 横2倍
+                     -0.0,  // 横傾き
+                     0.0,   // X座標
+                     0.0,   // 縦傾き
+                     2.0,   // 縦2倍
+                     0.0    // Y座標
+                    };
 
 static void updateFromFrameTask() {
 
   ui.update(lcd);//タッチイベントを取るので、LGFXが基底クラスでないといけない
 
-  if( ui.getEvent() != NO_EVENT ){//何かイベントがあれば
-    if( ui.getEvent() == TOUCH ){//TOUCHの時だけ
-    }
-    if(ui.getEvent() == MOVE){
-      pressedBtnID = ui.getTouchBtnID()+12;//12個分の物理ボタンをタッチボタンIDに足す
-    }
-    if( ui.getEvent() == RELEASE ){//RELEASEの時だけ
-      // pressedBtnID = ui.getTouchBtnID()+12;//12個分の物理ボタンをタッチボタンIDに足す
-      pressedBtnID = -1;//リセット
-    }
-  }
+  // if( ui.getEvent() != NO_EVENT ){//何かイベントがあれば
+  //   if( ui.getEvent() == TOUCH ){//TOUCHの時だけ
+  //   }
+  //   if(ui.getEvent() == MOVE){
+  //     pressedBtnID = ui.getTouchBtnID()+12;//12個分の物理ボタンをタッチボタンIDに足す
+  //   }
+  //   if( ui.getEvent() == RELEASE ){//RELEASEの時だけ
+  //     // pressedBtnID = ui.getTouchBtnID()+12;//12個分の物理ボタンをタッチボタンIDに足す
+  //     pressedBtnID = -1;//リセット
+  //   }
+  // }
 
   // ui.updatePhBtns();//物理ボタンの状態を更新
 
@@ -218,35 +256,158 @@ static void updateFromFrameTask() {
   //           pressedBtnID = 8;
   //       }
   //   }
-    // tft.print(customKey);
+    // canvas.print(customKey);
 
+  ui.updatePhVols();
+  ui.updatePhBtns();//物理ボタンの状態を更新
+  // uint32_t hitvalue = ui.getHitValue();
+  // // 入力内容を画面とシリアルに出力
+    // switch (hitvalue)
+    // {
+    // default:  Serial.println("--"); break;
+    // case 101: Serial.println("A click"); break;
+    // case 102: Serial.println("B click"); break;
+    // case 103: Serial.println("C click"); break;
+    // case 111: Serial.println("A hold"); break;
+    // case 112: Serial.println("B hold"); break;
+    // case 113: Serial.println("C hold"); break;
+    // case 121: Serial.println("A float click"); break;
+    // case 122: Serial.println("B float click"); break;
+    // case 123: Serial.println("C float click"); break;
+    // case 201: Serial.println("AB hold"); break;
+    // case 202: Serial.println("AC hold"); break;
+    // case 203: Serial.println("BC hold"); break;
+    // case 204: Serial.println("ABC hold"); break;
+    // case 301: Serial.println("A->B->C"); break;
+    // }
+
+  // ui.setConstantGetF(true);//trueだとタッチポイントのボタンIDを連続取得するモード
+  // ui.update(lcd);//タッチイベントを取るので、LGFXが基底クラスでないといけない
+
+  // if( ui.getEvent() != NO_EVENT ){//何かイベントがあれば
+
+  //   if( ui.getEvent() == TOUCH ){//TOUCHの時だけ
+      
+  //   }
+  //   if(ui.getEvent() == MOVE){
+  //     //ui.getTouchBtnID();
+  //   }
+  //   if( ui.getEvent() == RELEASE ){//RELEASEの時だけ
+  //     // ui.setBtnID(-1);//タッチボタンIDをリセット
+  //     // pressedBtnID = ui.getTouchBtnID()+12;//12個分の物理ボタンをタッチボタンIDに足す
+  //     pressedBtnID = -1;//リセット
+  //   }
+  // }
+
+  pressedBtnID = getPhBtnInput();
+
+    // if(ui.getTouchBtnID() == RELEASE){//リリースされたら
+    //   pressedBtnID = -1;
+    // }
+  
+  uint32_t now = millis();
+  uint32_t remainTime= (now - preTime);
+  preTime = now;
+
+  //ゲーム内のprint時の文字設定をしておく
+  canvas.setTextSize(1);//サイズ
+  canvas.setFont(&lgfxJapanGothicP_8);//日本語可
+  canvas.setCursor(0, 0);//位置
+  canvas.setTextWrap(true);
+
+  //0ボタンで強制終了
+  if (pressedBtnID == 10)
+  { // reload
+
+  }
+
+  // if (pressedBtnID == 9999)
+  // { // reload
+
+  // }
+
+
+        ui.showTouchEventInfo( canvas, 0, 100 );//タッチイベントを視覚化する
+        ui.showInfo( canvas, 0, 100+8 );//ボタン情報、フレームレート情報などを表示します。
+        // ui.drawPhBtns( canvas, 0, 90+16 );//物理ボタンの状態を表示
+
+        //SD利用可能かどうか
+        // canvas.setTextSize(1);
+        // canvas.setTextColor( TFT_WHITE , TFT_BLACK );
+        // canvas.setCursor( 100, 0 );
+        // if(isCardMounted){
+        //   canvas.print("SDアリ");
+        // }else{
+        //   canvas.print("SDナシ");
+        // }
+
+          
+
+        
+        // delay(4);//120FPS スプライトが少ない、速度の速いモード描画ぶん待つ
+        // delay(10);//30FPS メニュー、パズルなど
+
+  // int wait = 1000/60 - remainTime;//フレームレートを60FPS合わせる
+  // if(wait > 0){
+  //   delay(wait);
+  // }
+  // xSemaphoreGiveFromISR(semaphore, NULL);
+
+  bool bu = false;
+  bool bd = false;
+  bool br = false;
+  bool bl = false;
   bool ba = false;
   bool bb = false;
 
   if(pressedBtnID == -1){
-    ba = false;
-    bb = false;
+    bool bu = false;
+    bool bd = false;
+    bool br = false;
+    bool bl = false;
+    bool ba = false;
+    bool bb = false;
   }
 
   // ba = !lgfx::gpio_in(BUTTON_A_PIN);
   // bb = !lgfx::gpio_in(BUTTON_B_PIN);
   
-  if(pressedBtnID == 8 || pressedBtnID == 14){
+  if(pressedBtnID == 0){
+    bl= true;
+  }
+  if(pressedBtnID == 1){
+    br = true;
+  }
+  if(pressedBtnID == 2){
+    bu = true;
+  }
+  if(pressedBtnID == 3){
+    bd = true;
+  }
+
+  if(pressedBtnID ==6 || pressedBtnID == 5){
     ba = true;
   }
-  if(pressedBtnID == 3 || pressedBtnID == 15){
+  if(pressedBtnID == 4|| pressedBtnID == 7){
     bb = true;
   }
-  setButtonState(false, false, false, false, bb, ba);
+
+  setButtonState(bl, br, bu, bd, bb, ba);
   updateFrame();
   lcd.startWrite();
-  canvas.pushSprite(canvasX, canvasY);
+  // canvas.pushSprite(canvasX, canvasY);
+  canvas.pushAffine(matrix_game);//ゲーム画面を最終描画する
+  //Affineを使わない書き方
+  // canvas.setPivot(0, 0);
+  // canvas.pushRotateZoom(&screen, 0, 0, 0, 2, 2);
+  // canvas.pushSprite(&lcd,canvasX,canvasY);//ゲーム画面を小さく高速描画する
+
   lcd.endWrite();
   if (!isInMenu) {
-    if(pressedBtnID == 4 || pressedBtnID == 12){
+    if(pressedBtnID == 10){
       goToMenu();
     }
-    if(pressedBtnID == 7){
+    if(pressedBtnID == 9){
       toggleSound();
     }
   }
@@ -259,6 +420,12 @@ static void updateFromFrameTask() {
   //     }
   //   }
   // }
+  frame++;
+
+  if(frame > 18446744073709551615)frame = 0;
+
+  delay(1);
+
 }
 
 static void updateFrameTask(void *pvParameters) {
@@ -325,10 +492,10 @@ static void IRAM_ATTR onSoundTimer() {
 }
 
 void setup() {
+  Serial.begin(115200);
   // M5.begin();
   // ui.begin( lcd, 16, 1, false);
-  ui.begin( lcd, 16, 1, true);
-  ui.setupPhBtns(36, 39, 34);//物理ボタンをセットアップ
+  ui.begin( lcd, 16, 1, false);
   
   delay(100);
 
@@ -355,7 +522,7 @@ void setup() {
                        &soundTaskHandle, PRO_CPU_NUM);
 
   //ボタン配置(見えない)
-  ui.createBtns( 240,  0,  60, 240,  1, 4, TOUCH );//コントローラー4ボタン
+  // ui.createBtns( 240,  0,  60, 240,  1, 4, TOUCH );//コントローラー4ボタン
 
   sideSprite.setPsram(false );
   sideSprite.setColorDepth(16);//子スプライトの色深度
@@ -367,6 +534,7 @@ void setup() {
 }
 
 void loop() { 
+  
     // char key = customKeypad.getKey();
     // if (key) {
     //   Serial.print(blink);
