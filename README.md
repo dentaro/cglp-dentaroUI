@@ -1,5 +1,5 @@
 # cglp-dentaroUI
-for esp32, need LovyanGFX 
+for 2432S028R, need LovyanGFX 
 
 ABAさんのcglpライブラリ＋ゲームを2432S028Rのタッチパネルから遊べるようにしたものです。
 こちらのライブラリを利用させていただいています。
